@@ -1,4 +1,4 @@
-# requirements.txt (snippet)
+# Core requirements - simplified for faster installation
 chromadb==0.5.5
 sentence-transformers==3.0.1
 groq
@@ -8,3 +8,6 @@ tqdm
 tabulate
 pytest
 
+# Minimal agentic framework integration (just what we need)
+langchain-core==0.2.43
+langchain-text-splitters==0.2.4

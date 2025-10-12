@@ -8,7 +8,6 @@ __pycache__/
 *.egg-info/
 *.egg
 .eggs/
-*.log
 .env
 .venv/
 venv/
@@ -26,17 +25,8 @@ dist/
 .vscode/
 .idea/
 
-# Data and artifacts (keep code small; commit only small sample data)
-data/raw/
-data/interim/
-outputs/
-checkpoints/
-runs/
+# ChromaDB indices (can be rebuilt automatically)
+.chroma/
 
-# Images / models (uncomment if you’ll use Git LFS instead)
-# *.pt
-# *.ckpt
-# *.onnx
-
-# Node (if present)
-node_modules/
+# Pytest cache (per pytest documentation)
+.pytest_cache/

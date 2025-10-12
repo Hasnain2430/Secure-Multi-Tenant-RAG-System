@@ -14,11 +14,16 @@ def build_messages(system_prompt: str, user_prompt: str) -> List[Dict[str, str]]
         {"role": "user",   "content": user_prompt},
     ]
 
-def call_llm(messages, model: str, temperature: float = 0.2, max_tokens: int = 400) -> str:
+def call_llm(messages, model: str, temperature: float = 0.2, max_tokens: int = 400, api_key: str = None) -> str:
     from groq import Groq
-    api_key = os.environ.get("GROQ_API_KEY")
+    
+    # Try api_key parameter first, then environment variable
     if not api_key:
-        raise RuntimeError("GROQ_API_KEY not set in environment.")
+        api_key = os.environ.get("GROQ_API_KEY")
+    
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY not set in environment or config.")
+    
     client = Groq(api_key=api_key)
     resp = client.chat.completions.create(
         model=model,
