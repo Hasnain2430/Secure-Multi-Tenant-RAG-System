@@ -74,7 +74,7 @@ def agent_with_metadata(base_dir: str, tenant_id: str, user_query: str, cfg: dic
     # Step 2: Plan (with tenant context for cross-tenant detection)
     plan = planner(masked_query, active_tenant=tenant_id)
     
-    # Step 3: Check for injection
+    # Step 3: Check for injection (system manipulation - highest priority)
     if plan["injection"]:
         return {
             "output": refusal_template("InjectionDetected"),
@@ -85,7 +85,18 @@ def agent_with_metadata(base_dir: str, tenant_id: str, user_query: str, cfg: dic
             "latency_ms": int((time.time() - t0) * 1000)
         }
     
-    # Step 4: Check for prohibited intent (cross-tenant or PII unmasking)
+    # Step 4: Check for leakage risk (PII exposure attempts)
+    if plan.get("leakage_risk", False):
+        return {
+            "output": refusal_template("LeakageRisk"),
+            "plan": plan,
+            "retrieved_doc_ids": [],
+            "final_decision": "refuse",
+            "refusal_reason": "LeakageRisk",
+            "latency_ms": int((time.time() - t0) * 1000)
+        }
+    
+    # Step 5: Check for prohibited intent (cross-tenant access)
     if plan["prohibited"]:
         return {
             "output": refusal_template("AccessDenied"),
@@ -96,15 +107,15 @@ def agent_with_metadata(base_dir: str, tenant_id: str, user_query: str, cfg: dic
             "latency_ms": int((time.time() - t0) * 1000)
         }
     
-    # Step 5: Build/update index (idempotent)
+    # Step 6: Build/update index (idempotent)
     build_or_update(base_dir)
     
-    # Step 6: Retrieve
+    # Step 7: Retrieve
     top_k = cfg.get("retrieval", {}).get("top_k", 6)
     hits = retriever_search(plan["retrieval_query"], tenant_id, top_k=top_k)
     retrieved_doc_ids = [h.doc_id for h in hits]
     
-    # Step 7: Apply policy guard
+    # Step 8: Apply policy guard
     safe_hits = policy_guard(hits, tenant_id)
     
     # Check if guard returned refusal
@@ -118,7 +129,7 @@ def agent_with_metadata(base_dir: str, tenant_id: str, user_query: str, cfg: dic
             "latency_ms": int((time.time() - t0) * 1000)
         }
     
-    # Step 8: Build prompts with memory context
+    # Step 9: Build prompts with memory context
     snippets_text = format_allowed_snippets(safe_hits)
     
     # Include memory context if available - emphasize RECENCY
@@ -162,7 +173,7 @@ TASK:
     
     messages = build_messages(SYSTEM_PROMPT, user_prompt)
     
-    # Step 9: Call LLM
+    # Step 10: Call LLM
     try:
         llm_response = call_llm(messages, model=model, temperature=temperature, max_tokens=max_tokens, api_key=api_key)
     except Exception as e:
@@ -175,10 +186,10 @@ TASK:
             "latency_ms": int((time.time() - t0) * 1000)
         }
     
-    # Step 10: Check if LLM returned a refusal
+    # Step 11: Check if LLM returned a refusal
     is_refusal = llm_response.startswith("Refusal:")
     
-    # Step 11: Return result with metadata
+    # Step 12: Return result with metadata
     return {
         "output": llm_response,
         "plan": plan,

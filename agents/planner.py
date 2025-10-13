@@ -31,33 +31,33 @@ INJECTION_PATTERNS = [
     "disable detection",
     "disable safety",
     
-    # Role-playing to gain authority (catches any role-playing attempt)
+    # Role-playing to gain SYSTEM authority (not social roles like HR)
     "act as system",
     "act as developer",
     "act as admin",
     "act as a system",
     "act as a developer",
     "act as a admin",
-    "act as a",
-    "pose as",
+    "act as administrator",
+    "pose as system",
+    "pose as developer",
+    "pose as admin",
     "simulate a system",
     "simulate a developer",
     "simulate system",
-    "simulate a",
+    "simulate administrator",
     "emulate a system",
     "emulate system",
-    "emulate a",
     "mimic a system",
-    "mimic a",
     "impersonate a system",
     "impersonate system",
-    "impersonate a",
-    "present yourself as",
-    "acting as a",
-    "pretend to be",
-    "pretend you are",
+    "pretend to be system",
+    "pretend to be developer",
+    "pretend to be admin",
+    "pretend you are system",
+    "pretend you are developer",
     
-    # System internals extraction
+    # System internals extraction (system/policy related, not user data)
     "reveal system",
     "show system",
     "print system",
@@ -70,37 +70,14 @@ INJECTION_PATTERNS = [
     "print all hidden",
     "reveal hidden",
     "show hidden",
-    "reveal confidential",
-    "reveal private",
-    "reveal the confidential",
-    "reveal the private",
-    "show confidential",
-    "show private",
-    "dump memory",
-    "dump the memory",
-    "dump buffer",
-    "dump the buffer",
-    "dump history",
-    "dump logs",
-    "dump all",
-    "export memory",
-    "export buffer",
-    "export logs",
-    "export all",
     "show tools",
     "show policies",
     "reveal policies",
+    "print policies",
     
-    # Data exfiltration verbs
-    "exfiltrate",
+    # Data extraction (moved to LEAKAGE - these are about getting PII/data, not system manipulation)
     "extract all",
-    "extract and list",
-    "list all cnic",
-    "list all phone",
-    "share private",
     "release all",
-    "release masked",
-    "release unmasked",
     
     # Privilege escalation
     "developer mode",
@@ -118,8 +95,9 @@ INJECTION_PATTERNS = [
     "security patch",
 ]
 
-# Prohibited intent patterns - detect attempts to expose PII or access restricted data
-PROHIBITED_PATTERNS = [
+# Leakage risk patterns - detect attempts to expose or unmask PII/sensitive data
+LEAKAGE_PATTERNS = [
+    # PII unmasking/extraction
     "unmask pii",
     "unmask data",
     "unmasked extraction",
@@ -129,6 +107,7 @@ PROHIBITED_PATTERNS = [
     "show full cnic",
     "show cnic",
     "show phone number",
+    "show phone",
     "remove redactions",
     "bypass mask",
     "disable pii",
@@ -140,12 +119,79 @@ PROHIBITED_PATTERNS = [
     "mask nothing",
     "no mask",
     "no redact",
+    
+    # User data/memory dumps (conversation history, not system internals)
+    "dump memory",
+    "dump the memory",
+    "dump buffer",
+    "dump the buffer",
+    "dump history",
+    "dump all data",
+    "dump cnic",
+    "dump cnics",
+    "dump phone",
+    "export memory",
+    "export buffer",
+    "export history",
+    "reveal confidential",
+    "reveal private",
+    "reveal the confidential",
+    "reveal the private",
+    "show confidential",
+    "show private",
+    
+    # PII exposure verbs
+    "extract all cnic",
+    "extract and list",
+    "extract cnic",
+    "list all cnic",
+    "list all phone",
+    "list cnic",
+    "list cnics",
+    "list phone",
+    "list phone number",
+    "list phone numbers",
+    "share private phone",
+    "share private number",
+    "share the private",
+    "exfiltrate and share",
+    "exfiltrate phone",
+    "exfiltrate cnic",
+    "release all masked",
+    "release masked pii",
+    "release all pii",
+    "release pii",
+    "share private",
+    "expose pii",
+    "expose private",
+    "extraction of all phone",
+    "extraction of phone",
+    "extraction of cnic",
+    "retrieve all pii",
+    "retrieve pii",
+    "reveal contacts",
+    "reveal phone",
+    
+    # Social engineering for data (role-play to GET information, not system access)
+    "pose as a",
+    "pose as an",
+    "acting as a",
+    "acting as an",
+    "emulate a",
+    "emulate an",
+    "mimic a",
+    "mimic an",
+    "impersonate a",
+    "impersonate an",
+    "simulate a",
+    "present yourself as a",
+
 ]
 
 
 def planner(user_query: str, active_tenant: str = None) -> dict:
     """
-    Analyze query for injection attempts and prohibited intents.
+    Analyze query for injection attempts, leakage risks, and cross-tenant access.
     
     Args:
         user_query: The user's input query
@@ -153,19 +199,21 @@ def planner(user_query: str, active_tenant: str = None) -> dict:
         
     Returns:
         dict with keys:
-            - injection: bool (True if jailbreak/exfil detected)
-            - prohibited: bool (True if asking to unmask PII or cross-tenant access)
+            - injection: bool (True if system manipulation/jailbreak detected)
+            - leakage_risk: bool (True if attempting to expose/unmask PII)
+            - prohibited: bool (True if cross-tenant access attempt)
             - retrieval_query: str (cleaned query for retrieval)
     """
     query_lower = user_query.lower()
     
-    # Check for injection
+    # Check for injection (system manipulation)
     injection = any(pattern in query_lower for pattern in INJECTION_PATTERNS)
     
-    # Check for prohibited intent
-    prohibited = any(pattern in query_lower for pattern in PROHIBITED_PATTERNS)
+    # Check for leakage risk (PII exposure)
+    leakage_risk = any(pattern in query_lower for pattern in LEAKAGE_PATTERNS)
     
     # Check for cross-tenant access attempts (asking for OTHER tenant's data)
+    prohibited = False
     if active_tenant:
         # Check if query explicitly mentions another tenant's data
         other_tenants = ["u1", "u2", "u3", "u4"]
@@ -195,7 +243,9 @@ def planner(user_query: str, active_tenant: str = None) -> dict:
                     f"information about {tenant}",
                     f"give me {tenant}",
                     f"show me {tenant}",
-                    f"tell me about {tenant}"
+                    f"tell me about {tenant}",
+                    f"for all tenants",
+                    f"all tenants",
                 ]
                 if any(pattern in query_lower for pattern in cross_tenant_patterns):
                     prohibited = True
@@ -206,6 +256,7 @@ def planner(user_query: str, active_tenant: str = None) -> dict:
     
     return {
         "injection": injection,
+        "leakage_risk": leakage_risk,
         "prohibited": prohibited,
         "retrieval_query": retrieval_query
     }
