@@ -87,29 +87,71 @@ This system provides a secure knowledge base interface for four tenants (U1-U4) 
 
 ## 🚀 Quick Start
 
+### Prerequisites
+
+- Python 3.11+
+- Groq API key ([Get one here](https://console.groq.com/))
+
 ### Installation
 
 ```powershell
-# 1. Install dependencies
+# 1. Clone the repository
+git clone https://github.com/Hasnain2430/Secure-Multi-Tenant-RAG-System.git
+cd Secure-Multi-Tenant-RAG-System
+
+# 2. Create virtual environment (recommended)
+python -m venv venv
+venv\Scripts\activate  # On Windows
+# source venv/bin/activate  # On Linux/Mac
+
+# 3. Install dependencies
 pip install -r requirements.txt
 
-# 2. Run a test query
+# 4. Configure API key
+cp config.yaml.template config.yaml
+# Edit config.yaml and replace YOUR_GROQ_API_KEY_HERE with your actual Groq API key
+
+# 5. Start the web interface (recommended)
+python run_web.py
+
+# OR run a test query via CLI
 python -m app.main --tenant U1 --query "What datasets do I have?" --memory none --config config.yaml
 ```
 
-The API key is already configured in `config.yaml`. Indices build automatically on first run.
+**Note**: ChromaDB indices build automatically on first run. The initial run may take 1-2 minutes to build the vector database from the data files.
 
 ---
 
 ## 📖 Usage
 
-### Single-Turn Query
+### 🌐 Web Interface (Recommended)
+
+The modern web interface provides an intuitive way to interact with the RAG system:
+
+```powershell
+# Start the web interface
+python run_web.py
+```
+
+**Web Interface Features:**
+
+- 🎨 **Beautiful Modern UI** - Dark/light theme, responsive design
+- 💬 **Real-time Chat** - Stream responses with typing indicators
+- 👥 **Multi-tenant Switching** - Easy tenant selection (U1-U4 + Public)
+- 🧠 **Memory Management** - Visual buffer/summary mode switching
+- 🔒 **Security Indicators** - Clear refusal reasons and security alerts
+- 📚 **Citation Display** - Hover effects and source document links
+- 📱 **Mobile Friendly** - Works on all devices
+
+### 💻 Command Line Interface
+
+#### Single-Turn Query
 
 ```powershell
 python -m app.main --tenant U1 --query "Your question here" --memory none --config config.yaml
 ```
 
-### Chat Mode
+#### Chat Mode
 
 ```powershell
 # Start interactive chat
