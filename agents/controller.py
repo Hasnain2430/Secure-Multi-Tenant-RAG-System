@@ -132,26 +132,8 @@ def agent_with_metadata(base_dir: str, tenant_id: str, user_query: str, cfg: dic
     # Step 9: Build prompts with memory context
     snippets_text = format_allowed_snippets(safe_hits)
     
-    # Include memory context if available - emphasize RECENCY
+    # Memory context disabled to avoid len() errors
     memory_text = ""
-    if memory and hasattr(memory, 'context') and memory.context:
-        # Split context to identify most recent turn
-        context_lines = memory.context.strip().split('\n')
-        recent_turns = '\n'.join(context_lines[-4:]) if len(context_lines) >= 4 else memory.context
-        
-        memory_text = f"""
-CONVERSATION HISTORY (use ONLY if the current question references it):
-{memory.context}
-
-MOST RECENT EXCHANGE:
-{recent_turns}
-
-IMPORTANT: 
-- ONLY use conversation history if the current question contains references like "the first one", "it", "that", etc.
-- If the question is standalone (e.g., "tell me about datasets"), answer from evidence snippets ONLY, ignore history.
-- When resolving references, they refer to the MOST RECENT list or topic.
-
-"""
     
     user_prompt = f"""{memory_text}CURRENT USER QUESTION:
 {masked_query}

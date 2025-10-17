@@ -66,7 +66,7 @@ def main():
     
     print("Starting web server...")
     print("The web interface will open automatically in your browser")
-    print("URL: http://localhost:5000")
+    print("URL: http://localhost:5001")
     print("=" * 50)
     
     # Start the web application
@@ -85,7 +85,7 @@ def main():
         # Open browser after a short delay
         def open_browser():
             time.sleep(2)
-            webbrowser.open("http://localhost:5000")
+            webbrowser.open("http://localhost:5001")
         
         import threading
         browser_thread = threading.Thread(target=open_browser)
@@ -93,7 +93,7 @@ def main():
         browser_thread.start()
         
         # Start the server
-        socketio.run(app, debug=False, host='0.0.0.0', port=5000)
+        socketio.run(app, debug=False, host='0.0.0.0', port=5001)
         
     except KeyboardInterrupt:
         print("\nWeb interface stopped by user")

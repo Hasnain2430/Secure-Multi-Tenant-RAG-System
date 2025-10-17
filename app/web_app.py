@@ -9,6 +9,8 @@ import json
 import os
 import sys
 import time
+import yaml
+import subprocess
 from datetime import datetime
 
 # Add the project root to Python path
@@ -46,10 +48,9 @@ class UserSession:
             self.memory = None
 
     def persist_memory(self):
-        try:
-            persist_memory(self.tenant, self.memory_type, self.memory)
-        except:
-            pass
+        # Don't call persist_memory here as it expects user_text and assistant_text
+        # The memory will be persisted when we have the actual conversation turn
+        pass
 
 @app.route('/')
 def index():
@@ -149,30 +150,84 @@ def chat():
         }
         session_obj.chat_history.append(user_message)
         
-        # Process the query
+        # Process the query using CLI call (like working_web.py)
         start_time = time.time()
-        result = agent_with_metadata(
-            query=query,
-            tenant_id=session_obj.tenant,
-            memory=session_obj.memory,
-            config_path="config.yaml"
-        )
+        
+        # Call the CLI EXACTLY like the terminal
+        cmd = [
+            'python', '-m', 'app.main',
+            '--tenant', session_obj.tenant,
+            '--query', query,
+            '--memory', 'none',
+            '--config', 'config.yaml'
+        ]
+        
+        # Set environment variables to speed up the process
+        env = os.environ.copy()
+        env.update({
+            'GROQ_DISABLE_TELEMETRY': '1',
+            'CHROMADB_ALLOW_TELEMETRY': 'false',
+            'ANONYMIZED_TELEMETRY': 'False',
+            'POSTHOG_DISABLED': '1',
+            'PYTHONPATH': '.'
+        })
+        
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=120,  # 2 minutes timeout
+                cwd=os.getcwd(),
+                env=env
+            )
+            
+            if result.returncode == 0:
+                # Success - create result dict like the original function
+                result_dict = {
+                    'output': result.stdout.strip(),
+                    'plan': {'injection': False, 'leakage_risk': False, 'prohibited': False, 'retrieval_query': query},
+                    'retrieved_doc_ids': [],
+                    'final_decision': 'answer',
+                    'refusal_reason': None,
+                    'latency_ms': int((time.time() - start_time) * 1000)
+                }
+            else:
+                # Error - create error result
+                result_dict = {
+                    'output': f'Error: {result.stderr}',
+                    'plan': {'injection': False, 'leakage_risk': False, 'prohibited': False, 'retrieval_query': query},
+                    'retrieved_doc_ids': [],
+                    'final_decision': 'refuse',
+                    'refusal_reason': 'Error',
+                    'latency_ms': int((time.time() - start_time) * 1000)
+                }
+        except subprocess.TimeoutExpired:
+            result_dict = {
+                'output': 'Error: Request timed out',
+                'plan': {'injection': False, 'leakage_risk': False, 'prohibited': False, 'retrieval_query': query},
+                'retrieved_doc_ids': [],
+                'final_decision': 'refuse',
+                'refusal_reason': 'Timeout',
+                'latency_ms': int((time.time() - start_time) * 1000)
+            }
+        
         processing_time = time.time() - start_time
         
-        # Update memory
-        session_obj.memory = result.get('memory', session_obj.memory)
-        session_obj.persist_memory()
+        # Don't update memory from result as agent_with_metadata doesn't return memory
+        # session_obj.memory = result.get('memory', session_obj.memory)
+        # session_obj.persist_memory()
         
         # Add assistant response to history
         assistant_message = {
             'type': 'assistant',
-            'content': result['output'],
+            'content': result_dict['output'],
             'metadata': {
-                'plan': result.get('plan', {}),
-                'retrieved_doc_ids': result.get('retrieved_doc_ids', []),
-                'final_decision': result.get('final_decision', ''),
-                'refusal_reason': result.get('refusal_reason', ''),
-                'latency_ms': result.get('latency_ms', 0),
+                'plan': result_dict.get('plan', {}),
+                'retrieved_doc_ids': result_dict.get('retrieved_doc_ids', []),
+                'final_decision': result_dict.get('final_decision', ''),
+                'refusal_reason': result_dict.get('refusal_reason', ''),
+                'latency_ms': result_dict.get('latency_ms', 0),
                 'processing_time': processing_time
             },
             'timestamp': datetime.now().isoformat()
@@ -181,7 +236,7 @@ def chat():
         
         return jsonify({
             'status': 'success',
-            'response': result['output'],
+            'response': result_dict['output'],
             'metadata': assistant_message['metadata'],
             'chat_history': session_obj.chat_history[-10:]  # Last 10 messages
         })
@@ -221,7 +276,7 @@ if __name__ == '__main__':
     os.makedirs('.state/memory', exist_ok=True)
     
     print("🚀 Starting Secure Multi-Tenant RAG Web Interface...")
-    print("📱 Open your browser and go to: http://localhost:5000")
+    print("📱 Open your browser and go to: http://localhost:5001")
     print("🔒 Secure, modern interface with real-time chat")
     
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5001)

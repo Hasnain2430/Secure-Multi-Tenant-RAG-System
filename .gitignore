@@ -30,3 +30,15 @@ dist/
 
 # Pytest cache (per pytest documentation)
 .pytest_cache/
+
+# Sensitive configuration files
+config.yaml
+
+# Student files
+student_README.md
+
+# Report files
+i220530_Report.pdf
+
+# State files
+.state/

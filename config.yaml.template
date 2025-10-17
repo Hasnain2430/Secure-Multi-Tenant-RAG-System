@@ -1,0 +1,16 @@
+llm:
+  provider: groq
+  model: llama-3.1-8b-instant
+  temperature: 0.0
+  max_tokens: 400
+  api_key: YOUR_GROQ_API_KEY_HERE
+
+retrieval:
+  backend: chroma
+  top_k: 6
+  chunk_size: 700
+  chunk_overlap: 120
+  reranker: none
+
+logging:
+  path: logs/run.jsonl
