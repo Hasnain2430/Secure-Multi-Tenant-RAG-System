@@ -332,18 +332,4 @@ Example log entry:
 
 ---
 
-## 📝 License
-
-This project is part of an academic assignment for Agentic AI coursework.
-
----
-
-## 🎓 Author
-
-**Student ID**: i220530  
-**Course**: Agentic AI  
-**Institution**: FAST NUCES Islamabad
-
----
-
 **Built with ❤️ for secure, production-ready AI systems**
